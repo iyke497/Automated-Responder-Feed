@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Compliance Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+<body class="bg-gray-900 text-white">
+  <div class="container mx-auto p-8">
+    <!-- Header Metrics -->
+    <div class="grid grid-cols-4 gap-4 mb-8">
+      <div class="bg-gray-800 p-4 rounded-lg">
+        <h3>Total Institutions</h3>
+        <p class="text-2xl" id="totalUsers">0</p>
+      </div>
+      <div class="bg-green-600 p-4 rounded-lg">
+        <h3>Compliant</h3>
+        <p class="text-2xl" id="CompliantUsers">0</p>
+      </div>
+      <div class="bg-red-600 p-4 rounded-lg">
+        <h3>Non-Compliant</h3>
+        <p class="text-2xl" id="nonCompliantUsers">0</p>
+      </div>
+      <div class="bg-gray-800 p-4 rounded-lg">
+        <h3>Compliance Rate</h3>
+        <p class="text-2xl" id="complianceRate">0%</p>
+      </div>
+    </div>
+
+    <!-- Charts Container -->
+    <div class="grid grid-cols-2 gap-8 mb-8">
+      <div class="bg-gray-800 p-4 rounded-lg">
+        <h2 class="text-xl mb-4">Compliance Distribution</h2>
+        <div id="pieChart"></div>
+      </div>
+      
+      <div class="bg-gray-800 p-4 rounded-lg">
+        <h2 class="text-xl mb-4">Infrastructure Development Progress</h2>
+        <div id="barChart"></div>
+      </div>
+    </div>
+
+    <!-- User Table -->
+    <div class="bg-gray-800 p-4 rounded-lg">
+      <h2 class="text-xl mb-4">User Compliance Status</h2>
+      <table class="w-full" id="userTable">
+        <thead>
+          <tr>
+            <th class="text-left p-2">Institution</th>
+            <th class="text-left p-2">Status</th>
+            <th class="text-left p-2">Desk Officer</th>
+            <th class="text-left p-2">Financial</th>
+            <th class="text-left p-2">Infrastructure Development</th>
+            <th class="text-left p-2">Equipment Procurement</th>
+            <th class="text-left p-2">Capacity Building</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Sample Data - Replace with your Excel data
+    const sampleData = [
+      {Institution: "FEDERAL SCHOOL OF OCCUPATIONAL THERAPY, YABA", Status: "Compliant", DeskOfficer: "Oluyemi Olagbende", Financial: 1, Infrastructure: 3, Equipment: 0, CapacityBuilding: 0},
+      {Institution: "FEDERAL MEDICAL CENTRE, TARABA STATE", Status: "Compliant", DeskOfficer: "Mohammed Jibo Aliyu", Financial: 1, Infrastructure: 9,Equipment: 3, CapacityBuilding: 0},
+      {Institution: "UNIVERSITY OF PORT-HARCOURT TEACHING HOSPITAL", Status:"Compliant",DeskOfficer: "Mary Showers", Financial:1, Infrastructure:8, Equipment:23, CapacityBuilding:1},
+      {Institution: "FEDERAL MEDICAL CENTRE, GUSAU ZAMFARA", Status: "Compliant",DeskOfficer: "Aliyu Na abba", Financial:1, Infrastructure:6, Equipment:2, CapacityBuilding:1},
+      {Institution: "NATIONAL ORTHOPAEDIC HOSPITAL BENIN", Status: "Compliant", DeskOfficer: "", Financial:3, Infrastructure:2, Equipment:1, CapacityBuilding:0},
+      {Institution: "FEDERAL NEURO-PSYCHIATRIC HOSPITAL YABA", Status:"Compliant", DeskOfficer: "Okonkwo Uchenna", Financial: 1, Infrastructure: 7, Equipment: 2, CapacityBuilding: 1},
+    ];
+    /*
+      {"FEDERAL NEURO-PSYCHIATRIC HOSPITAL YABA","Compliant","Okonkwo Uchenna",1,7,2,1},
+      {"NATIONAL EYE CENTRE KADUNA","Compliant","Caleb Achi",1,2,8,1},
+      {"AMINU KANO UNIVERSITY TEACHING HOSPITAL","Compliant","Gazali Bello",1,21,9,0},
+      {"NNAMDI AZIKIWE UNIVERSITY TEACHING HOSPITAL, NNEWI","Compliant","IBEKWE HYGINUS OBIJEKWU",1,1,0,0},
+      {"FEDERAL MEDICAL CENTRE, NASARAWA STATE","Compliant","Aliyu Ajibola",1,9,4,2},
+      {"FEDERAL SCHOOL OF MEDICAL LABORATORY TECHNOLOGY JOS","Compliant","Emmanuel Akpan",1,11,3,1},
+      {"NATIONAL ORTHOPEDIC HOSPITAL ,JALINGO, TARABA STATE","Compliant","Mohammed Alhaji Abubakar",1,11,6,0},
+      {"UNIVERSITY OF NIGERIA TEACHING HOSPITAL, ENUGU","Compliant","Uchenna Bonaventure Nwose",3,23,28,2},
+      {"UNIVERSITY COLLEGE HOSPITAL IBADAN","Compliant","",1,0,0,0},
+      {"ABUBAKAR TAFAWA BALEWA UNIVERSITY TEACHING HOSPITAL BAUCHI","Compliant","Mohammed Balarabe Ahmed",1,7,2,1},
+      {"NATIONAL BLOOD SERVICE COMMISSION (NBSC)","Compliant","Tariere",1,1,1,1},
+      {"FEDERAL TEACHING HOSPITAL, OWERRI","Compliant","Okoro Benson",1,7,3,0},
+      {"FEDERAL MEDICAL CENTRE, BIDA","Compliant","Donmichael Anya",1,7,6,0},
+      {"FEDERAL MEDICAL CENTRE, OWO","Compliant","OLU-BRAIMOH KEMI VICTORIA",0,7,2,0},
+      {"FEDERAL MEDICAL CENTRE, BAYELSA STATE","Compliant","Iberedem Bassey",0,2,0,1},
+      {"FEDERAL NUERO-PSYCHIATRIC HOSPITAL, DAWANUA, KANO STATE","Compliant","Ismail Mudi Hamza",0,6,2,0},
+      {"NATIONAL EAR CARE CENTRE KADUNA","Compliant","Nelson Ephraim",0,20,14,0},
+      {"NATIONAL ORTHOPEDIC HOSPITAL, BENIN, EDO STATE","Compliant","",0,0,0,1}
+    ];
+    */
+
+    // Update Metrics
+    function updateMetrics() {
+      const total = sampleData.length;
+      const Compliant = sampleData.filter(u => u.Status === 'Compliant').length;
+      const nonCompliant = total - Compliant;
+      const rate = ((Compliant / total) * 100 || 0).toFixed(1);
+
+      document.getElementById('totalUsers').textContent = total;
+      document.getElementById('CompliantUsers').textContent = Compliant;
+      document.getElementById('nonCompliantUsers').textContent = nonCompliant;
+      document.getElementById('complianceRate').textContent = `${rate}%`;
+    }
+
+    // Create Pie Chart
+    function createPieChart() {
+      const Compliant = sampleData.filter(u => u.Status === 'Compliant').length;
+      const nonCompliant = sampleData.length - Compliant;
+
+      const options = {
+        series: [Compliant, nonCompliant],
+        chart: { type: 'pie', height: 300 },
+        labels: ['Compliant', 'Non-Compliant'],
+        colors: ['#10B981', '#EF4444']
+      };
+
+      new ApexCharts(document.querySelector("#pieChart"), options).render();
+    }
+
+    // Create Bar Chart
+    function createBarChart() {
+      const options = {
+        series: [{
+          name: 'Compliance Score',
+          data: sampleData.map(u => u.Infrastructure)
+        }],
+        chart: { type: 'bar', height: 300 },
+        xaxis: { categories: sampleData.map(u => u.Institution) },
+        labels: { rotate: -45 },
+        colors: ['#3B82F6']
+      };
+
+      new ApexCharts(document.querySelector("#barChart"), options).render();
+    }
+
+    // Populate Table
+    function populateTable() {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = sampleData.map(user => `
+        <tr class="hover:bg-gray-700 ${user.Status === 'Compliant' ? 'bg-green-900/20' : 'bg-red-900/20'}">
+          <td class="p-2">${user.Institution}</td>
+          <td class="p-2">
+            <span class="px-2 py-1 rounded-full ${user.Status === 'Compliant' ? 'bg-green-600' : 'bg-red-600'}">
+              ${user.Status}
+            </span>
+          </td>
+          <td class="p-2">${user.DeskOfficer}</td>
+          <td class="p-2">${user.Financial}</td>
+          <td class="p-2">${user.Infrastructure}</td>
+          <td class="p-2">${user.Equipment}</td>
+          <td class="p-2">${user.CapacityBuilding}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Initialize Dashboard
+    function initDashboard() {
+      updateMetrics();
+      createPieChart();
+      createBarChart();
+      populateTable();
+    }
+
+    // Start when page loads
+    window.addEventListener('DOMContentLoaded', initDashboard);
+  </script>
+</body>
+</html>
