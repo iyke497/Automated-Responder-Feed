@@ -1,26 +1,41 @@
-import pandas as pd
-from app.config import Config
+from typing import List, Dict
 
 class DataProcessor:
     @staticmethod
-    def save_raw_data(data):
-        """Save raw API data to Excel"""
-        df = pd.DataFrame(data)
-        df.to_excel(Config.RAW_DATA_PATH, index=False)
-        return df
+    def transform_compliance_data(raw_data: List[Dict]) -> List[Dict]:
+        """Transform Eyemark API response to dashboard format"""
+        processed = []
+        
+        for entry in raw_data:
+            try:
+                processed.append({
+                    'Institution': entry.get('organization', {}).get('name', 'N/A'),
+                    'Status': 'Compliant' if entry.get('no_of_assigned_projects', 0) > 0 else 'Non-Compliant',
+                    'DeskOfficer': entry.get('user', {}).get('display_name', 'N/A'),
+                    'Financial': DataProcessor._calculate_financial_score(entry),
+                    'Infrastructure': entry.get('no_of_assigned_projects', 0),
+                    'Equipment': DataProcessor._count_equipment_projects(entry),
+                    'CapacityBuilding': DataProcessor._count_capacity_projects(entry)
+                })
+            except Exception as e:
+                continue
+                
+        return processed
 
     @staticmethod
-    def process_compliance_data():
-        """Process raw data and calculate compliance metrics"""
-        try:
-            df = pd.read_excel(Config.RAW_DATA_PATH)
-            
-            # Example processing - implement your custom logic
-            df['Status'] = df.apply(lambda row: 'Compliant' if row['compliance_score'] >= 75 else 'Non-Compliant', axis=1)
-            
-            # Save processed data
-            df.to_excel(Config.PROCESSED_DATA_PATH, index=False)
-            return df.to_dict(orient='records')
-        except Exception as e:
-            print(f"Processing error: {str(e)}")
-            return None
+    def _calculate_financial_score(entry: Dict) -> int:
+        """Example custom scoring logic"""
+        projects = entry.get('no_of_assigned_projects', 0)
+        return min(projects * 2, 100)  # Example scoring
+
+    @staticmethod
+    def _count_equipment_projects(entry: Dict) -> int:
+        """Count equipment-related projects"""
+        project_name = entry.get('assigned_object', {}).get('name', '').lower()
+        return 1 if 'equipment' in project_name else 0
+
+    @staticmethod
+    def _count_capacity_projects(entry: Dict) -> int:
+        """Count capacity building projects"""
+        project_name = entry.get('assigned_object', {}).get('name', '').lower()
+        return 1 if 'training' in project_name or 'capacity' in project_name else 0

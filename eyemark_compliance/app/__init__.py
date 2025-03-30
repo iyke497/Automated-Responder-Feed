@@ -1,9 +1,13 @@
 from flask import Flask
 from app.routes import main
 import logging
+from pathlib import Path
 
 def create_app():
-    app = Flask(__name__)
+    # Get absolute path to templates directory
+    template_dir = Path(__file__).resolve().parent.parent / 'templates'
+
+    app = Flask(__name__, template_folder=str(template_dir))
     
     # Configure logging
     logging.basicConfig(
