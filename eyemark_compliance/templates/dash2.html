@@ -75,16 +75,18 @@
     let sampleData = [];
 
     async function loadData() {
-        try {
-            const response = await fetch('/api/compliance-data');
-            if (!response.ok) throw new Error('Network response was not ok');
-            sampleData = await response.json();
-            initDashboard();
-        } catch (error) {
-            console.error('Error loading data:', error);
-            // Implement error handling UI
-        }
+    try {
+        const response = await fetch('/api/compliance-data');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const responseJson = await response.json();
+        if (!responseJson.success) throw new Error(responseJson.error);
+        sampleData = responseJson.data; // Extract the data array
+        initDashboard();
+    } catch (error) {
+        console.error('Error loading data:', error);
+        // Implement error handling UI (e.g., show toast/alert)
     }
+}
 
     // Auto-refresh data every 5 minutes
     setInterval(loadData, 300000);
