@@ -35,11 +35,12 @@ def compliance_data():
                 'total_institutions': total_items,
                 'total_compliant': total_compliant,
                 'total_non_compliant': total_non_compliant,
-                'compliance_rate': round((total_compliant / total_items * 100) if total_items > 0 else 0)
+                'compliance_rate': round((total_compliant / total_items * 100 if total_items > 0 else 0), 1)
             },
             'pagination': {
                 'page': page,
                 'per_page': per_page,
+                'total': total_items,
                 'total_pages': (total_items + per_page - 1) // per_page
             }
         })
