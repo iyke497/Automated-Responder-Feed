@@ -11,11 +11,11 @@ class DataProcessor:
                 processed.append({
                     'Institution': entry.get('organization', {}).get('name', 'N/A'),
                     'Status': 'Compliant' if entry.get('no_of_assigned_projects', 0) > 0 else 'Non-Compliant',
-                    'DeskOfficer': entry.get('user', {}).get('display_name', 'N/A'),
-                    'Financial': DataProcessor._calculate_financial_score(entry),
-                    'Infrastructure': entry.get('no_of_assigned_projects', 0),
-                    'Equipment': DataProcessor._count_equipment_projects(entry),
-                    'CapacityBuilding': DataProcessor._count_capacity_projects(entry)
+                    'DeskOfficer': "", #entry.get('user', {}).get('display_name', 'N/A'),
+                    'Financial': 0, #DataProcessor._calculate_financial_score(entry),
+                    'Infrastructure': 0, #entry.get('no_of_assigned_projects', 0),
+                    'Equipment': 0, #DataProcessor._count_equipment_projects(entry),
+                    'CapacityBuilding': 0, #DataProcessor._count_capacity_projects(entry)
                 })
             except Exception as e:
                 continue
