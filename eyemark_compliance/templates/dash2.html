@@ -100,22 +100,47 @@
 
     async function loadData() {
     try {
-        const response = await fetch(`/api/compliance-data?page=${currentPage}&per_page=${perPage}`);
-        if (!response.ok) throw new Error('Network response was not ok');
+        const response = await fetch(`/api/compliance-data?page=${currentPage}&per_page=${per_page}`);
         const responseJson = await response.json();
         
         if (!responseJson.success) throw new Error(responseJson.error);
         
+        // Update both data and metrics
         sampleData = responseJson.data;
-        totalItems = responseJson.total;
-        
-        updatePaginationStats();
-        initDashboard();
+        const metrics = responseJson.totals;
+
+        // Update metrics display
+        document.getElementById('totalUsers').textContent = metrics.total_institutions;
+        document.getElementById('CompliantUsers').textContent = metrics.total_compliant;
+        document.getElementById('nonCompliantUsers').textContent = metrics.total_non_compliant;
+        document.getElementById('complianceRate').textContent = `${metrics.compliance_rate}%`;
+
+        updatePaginationStats(responseJson.pagination);
+        initChartsAndTable();
         
     } catch (error) {
         console.error('Error loading data:', error);
-        // Add error display logic
+        // Show error to user
     }
+}
+
+// Remove the old updateMetrics function and modify initDashboard:
+function initChartsAndTable() {
+    createPieChart();
+    createBarChart();
+    populateTable();
+}
+
+// Update pie chart to use totals
+function createPieChart() {
+    const compliant = parseInt(document.getElementById('CompliantUsers').textContent);
+    const nonCompliant = parseInt(document.getElementById('nonCompliantUsers').textContent);
+
+    const options = {
+        series: [compliant, nonCompliant],
+        // ... rest of pie chart config
+    };
+    // Render chart
 }
 
     function updatePaginationStats() {
@@ -124,7 +149,7 @@
         
         document.getElementById('startCount').textContent = start;
         document.getElementById('endCount').textContent = end;
-        document.getElementById('totalCount').textContent = totalItems;
+        document.getElementById('totalUsers').textContent = totalItems;
         document.getElementById('currentPage').textContent = currentPage;
         
         // Disable previous button on first page
