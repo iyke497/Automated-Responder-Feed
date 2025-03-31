@@ -8,6 +8,12 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     body { font-family: 'Inter', sans-serif; }
   </style>
+  <!-- Add to your existing styles -->
+  <style>
+    #pieChart {
+        min-height: 280px; /* Prevent chart collapse during updates */
+    }
+  </style>
 </head>
 <body class="bg-[#edf7f1] text-gray-800">
   <div class="container mx-auto p-8">
@@ -100,7 +106,7 @@
 
     async function loadData() {
     try {
-        const response = await fetch(`/api/compliance-data?page=${currentPage}&per_page=${per_page}`);
+        const response = await fetch(`/api/compliance-data?page=${currentPage}&per_page=${perPage}`);
         const responseJson = await response.json();
         
         if (!responseJson.success) throw new Error(responseJson.error);
@@ -110,13 +116,18 @@
         const metrics = responseJson.totals;
 
         // Update metrics display
-        document.getElementById('totalUsers').textContent = metrics.total_institutions;
-        document.getElementById('CompliantUsers').textContent = metrics.total_compliant;
-        document.getElementById('nonCompliantUsers').textContent = metrics.total_non_compliant;
-        document.getElementById('complianceRate').textContent = `${metrics.compliance_rate}%`;
+       //totalItems = responseJson.pagination.total;
+        //document.getElementById('totalUsers').textContent = metrics.total_institutions;
+        document.getElementById('CompliantUsers').textContent = responseJson.totals.total_compliant;
+        document.getElementById('nonCompliantUsers').textContent = responseJson.totals.total_non_compliant;
+        document.getElementById('complianceRate').textContent = responseJson.totals.compliance_rate.toFixed(1) + '%';
 
-        updatePaginationStats(responseJson.pagination);
-        initChartsAndTable();
+        // Then update charts and table
+        sampleData = responseJson.data;
+        updatePaginationStats();
+        createPieChart();  // Explicitly recreate chart after data update
+        createBarChart();
+        populateTable();
         
     } catch (error) {
         console.error('Error loading data:', error);
@@ -138,9 +149,23 @@ function createPieChart() {
 
     const options = {
         series: [compliant, nonCompliant],
+        chart: { type: 'pie', height: 280 },
+        labels: ['Compliant', 'Non-Compliant'],
+        colors: ['#4baa73', '#ef4444'],
+        legend: { position: 'bottom' },
+        dataLabels: {
+            enabled: true,
+            formatter: function(val) {
+                return val.toFixed(1) + '%';
+            }
+        }
         // ... rest of pie chart config
     };
     // Render chart
+    // Clear previous chart instance
+    //if (window.pieChart) window.pieChart.destroy();
+    window.pieChart = new ApexCharts(document.querySelector("#pieChart"), options);
+    pieChart.render();
 }
 
     function updatePaginationStats() {
@@ -149,7 +174,7 @@ function createPieChart() {
         
         document.getElementById('startCount').textContent = start;
         document.getElementById('endCount').textContent = end;
-        document.getElementById('totalUsers').textContent = totalItems;
+        document.getElementById('totalCount').textContent = totalItems;
         document.getElementById('currentPage').textContent = currentPage;
         
         // Disable previous button on first page
@@ -259,7 +284,7 @@ function createPieChart() {
       populateTable();
     }
 
-    window.addEventListener('DOMContentLoaded', initDashboard);
+    //window.addEventListener('DOMContentLoaded', initDashboard);
   </script>
 </body>
 </html>
