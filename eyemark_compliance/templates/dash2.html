@@ -69,24 +69,84 @@
       </table>
     </div>
   </div>
+  <!-- Add Pagination Controls after the table -->
+    <div class="mt-4 flex justify-between items-center bg-white p-4 rounded-lg shadow">
+      <div class="text-sm text-gray-600">
+        Showing <span id="startCount">0</span>-<span id="endCount">0</span> of 
+        <span id="totalCount">0</span> institutions
+      </div>
+      <div class="flex gap-2">
+        <button onclick="previousPage()" 
+                class="px-3 py-1 border rounded-md hover:bg-gray-50" 
+                id="prevButton">
+          Previous
+        </button>
+        <span class="px-3 py-1 text-gray-600" id="currentPage">1</span>
+        <button onclick="nextPage()" 
+                class="px-3 py-1 border rounded-md hover:bg-gray-50" 
+                id="nextButton">
+          Next
+        </button>
+      </div>
+    </div>
 
   <script>
+    let currentPage = 1;
+    let perPage = 25;
+    let totalItems = 0;
+
     // Replace static sampleData with dynamic loading
     let sampleData = [];
 
     async function loadData() {
     try {
-        const response = await fetch('/api/compliance-data');
+        const response = await fetch(`/api/compliance-data?page=${currentPage}&per_page=${perPage}`);
         if (!response.ok) throw new Error('Network response was not ok');
         const responseJson = await response.json();
+        
         if (!responseJson.success) throw new Error(responseJson.error);
-        sampleData = responseJson.data; // Extract the data array
+        
+        sampleData = responseJson.data;
+        totalItems = responseJson.total;
+        
+        updatePaginationStats();
         initDashboard();
+        
     } catch (error) {
         console.error('Error loading data:', error);
-        // Implement error handling UI (e.g., show toast/alert)
+        // Add error display logic
     }
 }
+
+    function updatePaginationStats() {
+        const start = (currentPage - 1) * perPage + 1;
+        const end = Math.min(currentPage * perPage, totalItems);
+        
+        document.getElementById('startCount').textContent = start;
+        document.getElementById('endCount').textContent = end;
+        document.getElementById('totalCount').textContent = totalItems;
+        document.getElementById('currentPage').textContent = currentPage;
+        
+        // Disable previous button on first page
+        document.getElementById('prevButton').disabled = currentPage === 1;
+        // Disable next button on last page
+        document.getElementById('nextButton').disabled = 
+            currentPage === Math.ceil(totalItems / perPage);
+    }
+
+    function previousPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        loadData();
+    }
+  }
+
+    function nextPage() {
+        if (currentPage < Math.ceil(totalItems / perPage)) {
+            currentPage++;
+            loadData();
+        }
+      }
 
     // Auto-refresh data every 5 minutes
     setInterval(loadData, 300000);
@@ -96,16 +156,17 @@
 
     // Update Metrics
     function updateMetrics() {
-      const total = sampleData.length;
-      const compliant = sampleData.filter(u => u.Status === 'Compliant').length;
-      const nonCompliant = total - compliant;
-      const rate = ((compliant / total) * 100 || 0).toFixed(1);
+    const compliant = sampleData.filter(u => u.Status === 'Compliant').length;
+    const rate = ((compliant / sampleData.length) * 100 || 0).toFixed(1);
 
-      document.getElementById('totalUsers').textContent = total;
-      document.getElementById('CompliantUsers').textContent = compliant;
-      document.getElementById('nonCompliantUsers').textContent = nonCompliant;
-      document.getElementById('complianceRate').textContent = `${rate}%`;
-    }
+    // Keep these as they are page-specific
+    document.getElementById('CompliantUsers').textContent = compliant;
+    document.getElementById('nonCompliantUsers').textContent = sampleData.length - compliant;
+    document.getElementById('complianceRate').textContent = `${rate}%`;
+
+    // Update total institutions to show global count
+    document.getElementById('totalUsers').textContent = totalItems;
+  }
 
     // Create Pie Chart
     function createPieChart() {
