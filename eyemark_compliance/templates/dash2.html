@@ -62,7 +62,6 @@
         <thead>
           <tr class="bg-gray-50">
             <th class="text-left p-3 text-sm font-medium">Institution</th>
-            <th class="text-left p-3 text-sm font-medium">public_id</th>
             <th class="text-left p-3 text-sm font-medium">Status</th>
             <th class="text-left p-3 text-sm font-medium">Desk Officer</th>
             <th class="text-left p-3 text-sm font-medium">Financial</th>
@@ -206,7 +205,6 @@
       tbody.innerHTML = sampleData.map(user => `
         <tr class="hover:bg-gray-50">
           <td class="p-3 text-sm">${user.Institution}</td>
-          <td class="p-3 text-sm">${user.public_id}</td>
           <td class="p-3">
             <span class="px-2 py-1 rounded-full text-sm ${user.Status === 'Compliant' ? 'bg-[#4baa73]/20 text-[#4baa73]' : 'bg-red-100 text-red-800'}">
               ${user.Status}
