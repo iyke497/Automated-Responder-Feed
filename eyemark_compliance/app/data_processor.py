@@ -1,25 +1,26 @@
 from typing import List, Dict
 from collections import defaultdict
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
 class DataProcessor:
     @staticmethod
     def process_financial_responses(responses: List[Dict]) -> Dict[str, int]:
-        return DataProcessor._count_responses_by_public_id(responses)
+        return DataProcessor._count_responses_by_name(responses)
 
     @staticmethod
     def process_infrastructure_responses(responses: List[Dict]) -> Dict[str, int]:
-        return DataProcessor._count_responses_by_public_id(responses)
+        return DataProcessor._count_responses_by_name(responses)
 
     @staticmethod
     def process_equipment_responses(responses: List[Dict]) -> Dict[str, int]:
-        return DataProcessor._count_responses_by_public_id(responses)
+        return DataProcessor._count_responses_by_name(responses)
 
     @staticmethod
     def process_capacity_responses(responses: List[Dict]) -> Dict[str, int]:
-        return DataProcessor._count_responses_by_public_id(responses)
+        return DataProcessor._count_responses_by_name(responses)
 
     @staticmethod
     def _count_responses_by_public_id(responses: List[Dict]) -> Dict[str, int]:
@@ -39,6 +40,20 @@ class DataProcessor:
                             logger.debug(f"[Survey] ID: {public_id} | Count: {counts[public_id]}")
                             counts[public_id] += 1
 
+        return counts
+
+    @staticmethod
+    def _count_responses_by_name(responses: List[Dict]) -> Dict[str, int]:
+        counts = defaultdict(int)
+        for response in responses:
+            for section in response.get("sections", []):
+                for answer in section.get("answers", []):
+                    for institution in answer.get("verbose_body", []):
+                        raw_name = institution.get("name", "")
+                        norm_name = DataProcessor.normalize_name(raw_name)
+                        if norm_name:
+                            counts[norm_name] += 1
+                            logger.debug(f"Counted: {norm_name} → {counts[norm_name]}")
         return counts
 
     @staticmethod
@@ -116,3 +131,43 @@ class DataProcessor:
                 continue
 
         return dashboard_rows
+
+    @staticmethod
+    def normalize_name(name: str) -> str:
+        """Standardize institution names for reliable matching"""
+        if not name:
+            return ""
+            
+        # 1. Remove special characters
+        name = re.sub(r'[^a-zA-Z0-9\s]', '', name)
+        
+        # 2. Convert to lowercase
+        name = name.lower()
+        
+        # 3. Standardize common variations
+        replacements = {
+            'centre': 'center',
+            'hosp': 'hospital',
+            'univ': 'university',
+            'st ': 'saint ',
+            'st. ': 'saint '
+        }
+        for k, v in replacements.items():
+            name = name.replace(k, v)
+        
+        # 4. Remove extra spaces
+        return ' '.join(name.split()).strip()
+    
+    @staticmethod
+    def normalize_name_for_matching(name: str) -> str:
+        """Basic normalization for reliable matching"""
+        if not name:
+            return ""
+        return (
+            name.strip()
+            .lower()
+            .replace("-", " ")
+            .replace("_", " ")
+            .replace(".", " ")
+            .replace("  ", " ")
+        )
