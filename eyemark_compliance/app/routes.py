@@ -19,74 +19,6 @@ SURVEY_MAP = {
 def dashboard():
     return render_template('dash2.html')
 
-# @main.route('/api/compliance-data')
-# def compliance_data():
-#     try:
-#         api_client = EyemarkAPIClient()
-        
-#         # Parallel fetch all data sources
-#         with ThreadPoolExecutor(max_workers=5) as executor:
-#             # Submit all fetch tasks
-#             future_org = executor.submit(api_client.fetch_compliance_data)
-#             future_surveys = {
-#                 key: executor.submit(api_client.fetch_survey_responses, survey_id)
-#                 for key, (survey_id, _) in SURVEY_MAP.items()
-#             }
-            
-#             # Get results
-#             org_data = future_org.result(timeout=30)
-#             survey_responses = {
-#                 key: future.result(timeout=30)
-#                 for key, future in future_surveys.items()
-#             }
-
-#         # Process survey data
-#         processed_surveys = {}
-#         for key, responses in survey_responses.items():
-#             processor = SURVEY_MAP[key][1]
-#             processed_surveys[key] = processor(responses)
-
-#         # Build and enrich data
-#         dashboard_data = build_base_institution_list(org_data)
-#         dashboard_data = apply_survey_counts(
-#             dashboard_data,
-#             processed_surveys['financial'],
-#             processed_surveys['infra'],
-#             processed_surveys['equipment'],
-#             processed_surveys['capacity']
-#         )
-        
-
-#         # Pagination logic
-#         page = int(request.args.get('page', 1))
-#         per_page = int(request.args.get('per_page', 25))
-#         total_items = len(dashboard_data)
-#         paginated_data = dashboard_data[(page-1)*per_page : page*per_page]
-
-#         # Calculate metrics
-#         total_compliant = sum(1 for item in dashboard_data if item['Status'] == 'Compliant')
-        
-#         return jsonify({
-#             'success': True,
-#             'data': paginated_data,
-#             'totals': {
-#                 'total_institutions': total_items,
-#                 'total_compliant': total_compliant,
-#                 'total_non_compliant': total_items - total_compliant,
-#                 'compliance_rate': round((total_compliant / total_items * 100 if total_items > 0 else 0), 1)
-#             },
-#             'pagination': {
-#                 'page': page,
-#                 'per_page': per_page,
-#                 'total': total_items,
-#                 'total_pages': (total_items + per_page - 1) // per_page
-#             }
-#         })
-        
-#     except Exception as e:
-#         logger.error(f"API endpoint error: {str(e)}")
-#         return jsonify({'success': False, 'error': str(e)}), 500
-
 @main.route('/api/compliance-data')
 def compliance_data():
     try:
@@ -109,28 +41,37 @@ def compliance_data():
         infra_counts = DataProcessor.process_infrastructure_responses(survey_responses['infra'])
         equipment_counts = DataProcessor.process_equipment_responses(survey_responses['equipment'])
         capacity_counts = DataProcessor.process_capacity_responses(survey_responses['capacity'])
-
-        print(type(financial_counts))
-        # ... others
         
         # 4. Build and merge data
         base_list = build_base_institution_list(org_data)
-        dashboard_data = apply_survey_counts(
-            base_list,
-            financial_counts,
-            infra_counts,
-            equipment_counts,
-            capacity_counts
-        )
+
+        # Apply survey counts
+        for institution in base_list:
+            norm_name = institution['Institution']  # Pre-normalized
+            
+            institution.update({
+                'Institution': norm_name.title(),
+                'Financial': financial_counts.get(norm_name, 0),
+                'Infrastructure': infra_counts.get(norm_name, 0),
+                'Equipment': equipment_counts.get(norm_name, 0),
+                'CapacityBuilding': capacity_counts.get(norm_name, 0)
+            })
+            
+            # Debug log
+            logger.debug(
+                f"{norm_name}: "
+                f"F={institution['Financial']}, "
+                f"I={institution['Infrastructure']}"
+            )
         
         # Pagination logic
         page = int(request.args.get('page', 1))
         per_page = int(request.args.get('per_page', 25))
-        total_items = len(dashboard_data)
-        paginated_data = dashboard_data[(page-1)*per_page : page*per_page]
+        total_items = len(base_list)
+        paginated_data = base_list[(page-1)*per_page : page*per_page]
 
         # Calculate metrics
-        total_compliant = sum(1 for item in dashboard_data if item['Status'] == 'Compliant')
+        total_compliant = sum(1 for item in base_list if item['Status'] == 'Compliant')
 
         return jsonify({
             'success': True,
@@ -157,8 +98,12 @@ def build_base_institution_list(org_data: list[dict]) -> list[dict]:
     
     return [
         {
-            'Institution': entry.get('organization', {}).get('name', 'N/A'),
-            'public_id': entry.get('organization', {}).get('public_id', '').replace('-', '').lower(),
+            'Institution':  DataProcessor.normalize_name(
+                entry.get('organization', {}).get('name', 'N/A')
+            ),
+            'normalized_name': DataProcessor.normalize_name_for_matching(
+                entry.get('organization', {}).get('name', '')
+            ),
             'Status': 'Compliant' if entry.get('no_of_assigned_projects', 0) > 0 else 'Non-Compliant',
             'DeskOfficer': entry.get('contact_officer', {}).get('full_name', ''),
             'Financial': 0,
