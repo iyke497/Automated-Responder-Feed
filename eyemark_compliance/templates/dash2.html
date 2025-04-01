@@ -6,12 +6,12 @@
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-    body { font-family: 'Inter', sans-serif; }
-  </style>
-  <!-- Add to your existing styles -->
-  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
     #pieChart {
-        min-height: 280px; /* Prevent chart collapse during updates */
+      min-height: 280px; /* Prevent chart collapse during updates */
     }
   </style>
 </head>
@@ -23,7 +23,7 @@
         <h3 class="text-sm text-gray-500 mb-1">Total Institutions</h3>
         <p class="text-2xl font-semibold text-gray-800" id="totalUsers">0</p>
       </div>
-      
+
       <div class="bg-[#4baa73] p-4 rounded-lg shadow text-white">
         <h3 class="text-sm mb-1">Compliant</h3>
         <p class="text-2xl font-semibold" id="CompliantUsers">0</p>
@@ -46,7 +46,7 @@
         <h2 class="text-lg font-semibold mb-4">Compliance Distribution</h2>
         <div id="pieChart"></div>
       </div>
-      
+
       <div class="bg-white p-4 rounded-lg shadow">
         <h2 class="text-lg font-semibold mb-4">Infrastructure Progress</h2>
         <div id="barChart"></div>
@@ -62,6 +62,7 @@
         <thead>
           <tr class="bg-gray-50">
             <th class="text-left p-3 text-sm font-medium">Institution</th>
+            <th class="text-left p-3 text-sm font-medium">public_id</th>
             <th class="text-left p-3 text-sm font-medium">Status</th>
             <th class="text-left p-3 text-sm font-medium">Desk Officer</th>
             <th class="text-left p-3 text-sm font-medium">Financial</th>
@@ -70,155 +71,98 @@
             <th class="text-left p-3 text-sm font-medium">Capacity Building</th>
           </tr>
         </thead>
-        <tbody id="tableBody" class="divide-y divide-gray-200">
-        </tbody>
+        <tbody id="tableBody" class="divide-y divide-gray-200"></tbody>
       </table>
     </div>
-  </div>
-  <!-- Add Pagination Controls after the table -->
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="hidden fixed inset-0 bg-gray-200/50 flex items-center justify-center z-50">
+      <div class="animate-spin rounded-full h-12 w-12 border-4 border-[#4baa73] border-t-transparent"></div>
+    </div>
+
+    <!-- Pagination Controls -->
     <div class="mt-4 flex justify-between items-center bg-white p-4 rounded-lg shadow">
       <div class="text-sm text-gray-600">
         Showing <span id="startCount">0</span>-<span id="endCount">0</span> of 
         <span id="totalCount">0</span> institutions
       </div>
       <div class="flex gap-2">
-        <button onclick="previousPage()" 
-                class="px-3 py-1 border rounded-md hover:bg-gray-50" 
-                id="prevButton">
+        <button onclick="previousPage()" class="px-3 py-1 border rounded-md hover:bg-gray-50" id="prevButton">
           Previous
         </button>
         <span class="px-3 py-1 text-gray-600" id="currentPage">1</span>
-        <button onclick="nextPage()" 
-                class="px-3 py-1 border rounded-md hover:bg-gray-50" 
-                id="nextButton">
+        <button onclick="nextPage()" class="px-3 py-1 border rounded-md hover:bg-gray-50" id="nextButton">
           Next
         </button>
       </div>
     </div>
+  </div>
 
   <script>
     let currentPage = 1;
     let perPage = 25;
     let totalItems = 0;
-
-    // Replace static sampleData with dynamic loading
     let sampleData = [];
 
     async function loadData() {
-    try {
+      try {
+        document.getElementById('loadingSpinner').classList.remove('hidden');
+
         const response = await fetch(`/api/compliance-data?page=${currentPage}&per_page=${perPage}`);
         const responseJson = await response.json();
-        
+
         if (!responseJson.success) throw new Error(responseJson.error);
-        
-        // Update both data and metrics
+
         sampleData = responseJson.data;
+        totalItems = responseJson.pagination.total;
         const metrics = responseJson.totals;
 
-        // Update metrics display
-       //totalItems = responseJson.pagination.total;
-        //document.getElementById('totalUsers').textContent = metrics.total_institutions;
-        document.getElementById('CompliantUsers').textContent = responseJson.totals.total_compliant;
-        document.getElementById('nonCompliantUsers').textContent = responseJson.totals.total_non_compliant;
-        document.getElementById('complianceRate').textContent = responseJson.totals.compliance_rate.toFixed(1) + '%';
+        // Update metrics
+        document.getElementById('totalUsers').textContent = metrics.total_institutions;
+        document.getElementById('CompliantUsers').textContent = metrics.total_compliant;
+        document.getElementById('nonCompliantUsers').textContent = metrics.total_non_compliant;
+        document.getElementById('complianceRate').textContent = metrics.compliance_rate.toFixed(1) + '%';
 
-        // Then update charts and table
-        sampleData = responseJson.data;
         updatePaginationStats();
-        createPieChart();  // Explicitly recreate chart after data update
+        createPieChart();
         createBarChart();
         populateTable();
-        
-    } catch (error) {
+
+      } catch (error) {
         console.error('Error loading data:', error);
-        // Show error to user
+        // Optionally display user-facing error here
+      } finally {
+        document.getElementById('loadingSpinner').classList.add('hidden');
+      }
     }
-}
-
-// Remove the old updateMetrics function and modify initDashboard:
-function initChartsAndTable() {
-    createPieChart();
-    createBarChart();
-    populateTable();
-}
-
-// Update pie chart to use totals
-function createPieChart() {
-    const compliant = parseInt(document.getElementById('CompliantUsers').textContent);
-    const nonCompliant = parseInt(document.getElementById('nonCompliantUsers').textContent);
-
-    const options = {
-        series: [compliant, nonCompliant],
-        chart: { type: 'pie', height: 280 },
-        labels: ['Compliant', 'Non-Compliant'],
-        colors: ['#4baa73', '#ef4444'],
-        legend: { position: 'bottom' },
-        dataLabels: {
-            enabled: true,
-            formatter: function(val) {
-                return val.toFixed(1) + '%';
-            }
-        }
-        // ... rest of pie chart config
-    };
-    // Render chart
-    // Clear previous chart instance
-    //if (window.pieChart) window.pieChart.destroy();
-    window.pieChart = new ApexCharts(document.querySelector("#pieChart"), options);
-    pieChart.render();
-}
 
     function updatePaginationStats() {
-        const start = (currentPage - 1) * perPage + 1;
-        const end = Math.min(currentPage * perPage, totalItems);
-        
-        document.getElementById('startCount').textContent = start;
-        document.getElementById('endCount').textContent = end;
-        document.getElementById('totalCount').textContent = totalItems;
-        document.getElementById('currentPage').textContent = currentPage;
-        
-        // Disable previous button on first page
-        document.getElementById('prevButton').disabled = currentPage === 1;
-        // Disable next button on last page
-        document.getElementById('nextButton').disabled = 
-            currentPage === Math.ceil(totalItems / perPage);
+      const start = (currentPage - 1) * perPage + 1;
+      const end = Math.min(currentPage * perPage, totalItems);
+
+      document.getElementById('startCount').textContent = start;
+      document.getElementById('endCount').textContent = end;
+      document.getElementById('totalCount').textContent = totalItems;
+      document.getElementById('currentPage').textContent = currentPage;
+
+      document.getElementById('prevButton').disabled = currentPage === 1;
+      document.getElementById('nextButton').disabled = currentPage === Math.ceil(totalItems / perPage);
     }
 
     function previousPage() {
-    if (currentPage > 1) {
+      if (currentPage > 1) {
         currentPage--;
         loadData();
+      }
     }
-  }
 
     function nextPage() {
-        if (currentPage < Math.ceil(totalItems / perPage)) {
-            currentPage++;
-            loadData();
-        }
+      if (currentPage < Math.ceil(totalItems / perPage)) {
+        currentPage++;
+        loadData();
       }
+    }
 
-    // Auto-refresh data every 5 minutes
-    setInterval(loadData, 300000);
-
-    // Initial load
-    document.addEventListener('DOMContentLoaded', loadData);
-
-    // Update Metrics
-    function updateMetrics() {
-    const compliant = sampleData.filter(u => u.Status === 'Compliant').length;
-    const rate = ((compliant / sampleData.length) * 100 || 0).toFixed(1);
-
-    // Keep these as they are page-specific
-    document.getElementById('CompliantUsers').textContent = compliant;
-    document.getElementById('nonCompliantUsers').textContent = sampleData.length - compliant;
-    document.getElementById('complianceRate').textContent = `${rate}%`;
-
-    // Update total institutions to show global count
-    document.getElementById('totalUsers').textContent = totalItems;
-  }
-
-    // Create Pie Chart
     function createPieChart() {
       const compliant = sampleData.filter(u => u.Status === 'Compliant').length;
       const nonCompliant = sampleData.length - compliant;
@@ -231,10 +175,10 @@ function createPieChart() {
         legend: { position: 'bottom' }
       };
 
+      document.getElementById("pieChart").innerHTML = ""; // Clear old chart
       new ApexCharts(document.querySelector("#pieChart"), options).render();
     }
 
-    // Create Bar Chart
     function createBarChart() {
       const options = {
         series: [{
@@ -253,15 +197,16 @@ function createPieChart() {
         grid: { borderColor: '#f3f4f6' }
       };
 
+      document.getElementById("barChart").innerHTML = ""; // Clear old chart
       new ApexCharts(document.querySelector("#barChart"), options).render();
     }
 
-    // Populate Table
     function populateTable() {
       const tbody = document.getElementById('tableBody');
       tbody.innerHTML = sampleData.map(user => `
         <tr class="hover:bg-gray-50">
           <td class="p-3 text-sm">${user.Institution}</td>
+          <td class="p-3 text-sm">${user.public_id}</td>
           <td class="p-3">
             <span class="px-2 py-1 rounded-full text-sm ${user.Status === 'Compliant' ? 'bg-[#4baa73]/20 text-[#4baa73]' : 'bg-red-100 text-red-800'}">
               ${user.Status}
@@ -276,15 +221,8 @@ function createPieChart() {
       `).join('');
     }
 
-    // Initialize Dashboard
-    function initDashboard() {
-      updateMetrics();
-      createPieChart();
-      createBarChart();
-      populateTable();
-    }
-
-    //window.addEventListener('DOMContentLoaded', initDashboard);
+    setInterval(loadData, 300000); // Refresh every 5 mins
+    document.addEventListener('DOMContentLoaded', loadData);
   </script>
 </body>
 </html>

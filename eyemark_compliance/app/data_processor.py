@@ -1,9 +1,28 @@
 from typing import List, Dict
 from collections import defaultdict
+import logging
+
+logger = logging.getLogger(__name__)
 
 class DataProcessor:
     @staticmethod
-    def process_survey_responses(responses: List[Dict]) -> Dict[str, int]:
+    def process_financial_responses(responses: List[Dict]) -> Dict[str, int]:
+        return DataProcessor._count_responses_by_public_id(responses)
+
+    @staticmethod
+    def process_infrastructure_responses(responses: List[Dict]) -> Dict[str, int]:
+        return DataProcessor._count_responses_by_public_id(responses)
+
+    @staticmethod
+    def process_equipment_responses(responses: List[Dict]) -> Dict[str, int]:
+        return DataProcessor._count_responses_by_public_id(responses)
+
+    @staticmethod
+    def process_capacity_responses(responses: List[Dict]) -> Dict[str, int]:
+        return DataProcessor._count_responses_by_public_id(responses)
+
+    @staticmethod
+    def _count_responses_by_public_id(responses: List[Dict]) -> Dict[str, int]:
         """
         Count how many times each institution appears in survey responses,
         using the `verbose_body` field.
@@ -14,42 +33,27 @@ class DataProcessor:
             for section in response.get("sections", []):
                 for answer in section.get("answers", []):
                     for institution in answer.get("verbose_body", []):
-                        public_id = institution.get("public_id")
+                        raw_id = institution.get("public_id", "")
+                        public_id = raw_id.replace("-", "").strip().lower()  # Strip hyphens
                         if public_id:
+                            logger.debug(f"[Survey] ID: {public_id} | Count: {counts[public_id]}")
                             counts[public_id] += 1
 
         return counts
 
     @staticmethod
-    def extract_institution_stats(responses: List[Dict]) -> Dict[str, Dict[str, any]]:
+    def transform_compliance_data(
+        raw_data: List[Dict],
+        financial_counts: Dict[str, int],
+        infra_counts: Dict[str, int],
+        equipment_counts: Dict[str, int],
+        capacity_counts: Dict[str, int]
+    ) -> List[Dict]:
         """
-        Return both counts and institution names per public_id.
+        Match institutions to their response counts and build the dashboard table structure.
         """
-        stats = defaultdict(lambda: {'count': 0, 'name': ''})
-
-        for response in responses:
-            for section in response.get("sections", []):
-                for answer in section.get("answers", []):
-                    for institution in answer.get("verbose_body", []):
-                        public_id = institution.get("public_id")
-                        name = institution.get("name", "Unknown Institution")
-                        if public_id:
-                            stats[public_id]['count'] += 1
-                            stats[public_id]['name'] = name
-
-        return stats
-
-    @staticmethod
-    def transform_compliance_data(raw_data: List[Dict], financial_data: List[Dict], infra_data: List[Dict], equipment_data: List[Dict], capacity_data: List[Dict]) -> List[Dict]:
-        """
-        Transform all data sources into dashboard format.
-        """
-        financial_counts = DataProcessor.process_survey_responses(financial_data)
-        infra_counts = DataProcessor.process_survey_responses(infra_data)
-        equipment_counts = DataProcessor.process_survey_responses(equipment_data)
-        capacity_counts = DataProcessor.process_survey_responses(capacity_data)
-
         processed = []
+
         for entry in raw_data:
             try:
                 org = entry.get('organization', {})
@@ -71,25 +75,44 @@ class DataProcessor:
         return processed
 
     @staticmethod
-    def _calculate_financial_score(entry: Dict) -> int:
+    def transform_compliance_data_from_lists(
+        org_data: List[Dict],
+        financial_counts: Dict[str, int],
+        infra_counts: Dict[str, int],
+        equipment_counts: Dict[str, int],
+        capacity_counts: Dict[str, int]
+    ) -> List[Dict]:
         """
-        Example scoring logic for financial survey response.
+        Build dashboard rows by checking each org's public_id against pre-processed response counts.
         """
-        projects = entry.get('no_of_assigned_projects', 0)
-        return min(projects * 2, 100)
+        dashboard_rows = []
 
-    @staticmethod
-    def _count_equipment_projects(entry: Dict) -> int:
-        """
-        Count equipment-related projects based on name.
-        """
-        project_name = entry.get('assigned_object', {}).get('name', '').lower()
-        return 1 if 'equipment' in project_name else 0
+        for entry in org_data:
+            try:
+                org = entry.get('organization', {})
+                raw_id = org.get('public_id', '')
+                public_id = raw_id.replace('-', '').strip().lower()
+                name = org.get('name', 'N/A')
+                status = 'Compliant' if entry.get('no_of_assigned_projects', 0) > 0 else 'Non-Compliant'
 
-    @staticmethod
-    def _count_capacity_projects(entry: Dict) -> int:
-        """
-        Count capacity-building projects based on name.
-        """
-        project_name = entry.get('assigned_object', {}).get('name', '').lower()
-        return 1 if 'training' in project_name or 'capacity' in project_name else 0
+                # Inside transform_compliance_data_from_lists loop
+                logger.debug(
+                    "ID: %s | Financial: %s | Infra: %s",
+                    public_id,
+                    financial_counts.get(public_id, 0),
+                    infra_counts.get(public_id, 0)
+)
+
+                dashboard_rows.append({
+                    'Institution': name,
+                    'Status': status,
+                    'DeskOfficer': None,  # Add if available
+                    'Financial': financial_counts.get(public_id, 0),
+                    'Infrastructure': infra_counts.get(public_id, 0),
+                    'Equipment': equipment_counts.get(public_id, 0),
+                    'CapacityBuilding': capacity_counts.get(public_id, 0)
+                })
+            except Exception:
+                continue
+
+        return dashboard_rows
