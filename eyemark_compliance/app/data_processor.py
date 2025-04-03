@@ -144,18 +144,7 @@ class DataProcessor:
         # 2. Convert to lowercase
         name = name.lower()
         
-        # 3. Standardize common variations
-        replacements = {
-            'centre': 'center',
-            'hosp': 'hospital',
-            'univ': 'university',
-            'st ': 'saint ',
-            'st. ': 'saint '
-        }
-        for k, v in replacements.items():
-            name = name.replace(k, v)
-        
-        # 4. Remove extra spaces
+        # 3. Remove extra spaces
         return ' '.join(name.split()).strip()
     
     @staticmethod
