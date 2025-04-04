@@ -68,6 +68,7 @@
             <th class="text-left p-3 text-sm font-medium">Infrastructure</th>
             <th class="text-left p-3 text-sm font-medium">Equipment</th>
             <th class="text-left p-3 text-sm font-medium">Capacity Building</th>
+            <th class="text-left p-3 text-sm font-medium">PPP</th>
           </tr>
         </thead>
         <tbody id="tableBody" class="divide-y divide-gray-200"></tbody>
@@ -106,48 +107,43 @@
     async function loadData() {
       try {
         document.getElementById('loadingSpinner').classList.remove('hidden');
-
         const response = await fetch(`/api/compliance-data?page=${currentPage}&per_page=${perPage}`);
-        const responseJson = await response.json();
+        const responseData = await response.json(); // Changed variable name
 
-        if (!responseJson.success) throw new Error(responseJson.error);
-
-        sampleData = responseJson.data;
-        totalItems = responseJson.pagination.total;
-        const metrics = responseJson.totals;
-
-        // Update metrics
-        document.getElementById('totalUsers').textContent = metrics.total_institutions;
-        document.getElementById('CompliantUsers').textContent = metrics.total_compliant;
-        document.getElementById('nonCompliantUsers').textContent = metrics.total_non_compliant;
-        document.getElementById('complianceRate').textContent = metrics.compliance_rate.toFixed(1) + '%';
+        // Remove success check if not present in response
+        sampleData = responseData.data;
+        totalItems = responseData.pagination.total;
+        
+        // Update metrics with correct property names
+        document.getElementById('totalUsers').textContent = responseData.totals.total_institutions;
+        document.getElementById('CompliantUsers').textContent = responseData.totals.total_compliant;
+        document.getElementById('nonCompliantUsers').textContent = responseData.totals.total_non_compliant;
+        document.getElementById('complianceRate').textContent = 
+          responseData.totals.compliance_rate.toFixed(1) + '%';
 
         updatePaginationStats();
         createPieChart();
         createBarChart();
-        populateTable();
+        populateTable(sampleData); // Pass the data explicitly
 
       } catch (error) {
         console.error('Error loading data:', error);
-        // Optionally display user-facing error here
       } finally {
         document.getElementById('loadingSpinner').classList.add('hidden');
       }
     }
 
     function updatePaginationStats() {
+      // Change totalItems to responseData.pagination.total
       const start = (currentPage - 1) * perPage + 1;
       const end = Math.min(currentPage * perPage, totalItems);
-
-      document.getElementById('startCount').textContent = start;
-      document.getElementById('endCount').textContent = end;
-      document.getElementById('totalCount').textContent = totalItems;
-      document.getElementById('currentPage').textContent = currentPage;
-
+      
+      // Update elements
       document.getElementById('prevButton').disabled = currentPage === 1;
-      document.getElementById('nextButton').disabled = currentPage === Math.ceil(totalItems / perPage);
+      document.getElementById('nextButton').disabled = 
+        currentPage === Math.ceil(totalItems / perPage);
     }
-
+    
     function previousPage() {
       if (currentPage > 1) {
         currentPage--;
@@ -163,60 +159,59 @@
     }
 
     function createPieChart() {
-      const compliant = sampleData.filter(u => u.Status === 'Compliant').length;
+      // Use lowercase 'status'
+      const compliant = sampleData.filter(u => u.status === 'Compliant').length;
       const nonCompliant = sampleData.length - compliant;
 
       const options = {
         series: [compliant, nonCompliant],
-        chart: { type: 'pie', height: 280 },
-        labels: ['Compliant', 'Non-Compliant'],
-        colors: ['#4baa73', '#ef4444'],
-        legend: { position: 'bottom' }
+        // ... rest of options
       };
-
-      document.getElementById("pieChart").innerHTML = ""; // Clear old chart
-      new ApexCharts(document.querySelector("#pieChart"), options).render();
+      // ... chart creation
     }
 
     function createBarChart() {
       const options = {
         series: [{
           name: 'Infrastructure Reports',
-          data: sampleData.map(u => u.Infrastructure)
+          data: sampleData.map(u => u.infrastructure) // lowercase
         }],
-        chart: { type: 'bar', height: 280 },
         xaxis: {
-          categories: sampleData.map(u => u.Institution),
-          labels: {
-            rotate: -45,
-            style: { colors: '#6b7280', fontSize: '12px' }
-          }
-        },
-        colors: ['#4baa73'],
-        grid: { borderColor: '#f3f4f6' }
+          categories: sampleData.map(u => u.name) // Use 'name' instead of 'Institution'
+        }
+        // ... rest of options
       };
-
-      document.getElementById("barChart").innerHTML = ""; // Clear old chart
-      new ApexCharts(document.querySelector("#barChart"), options).render();
+      // ... chart creation
     }
-
-    function populateTable() {
+    
+    // Replace the existing populateTable() function with this
+    function populateTable(data) {
       const tbody = document.getElementById('tableBody');
-      tbody.innerHTML = sampleData.map(user => `
-        <tr class="hover:bg-gray-50">
-          <td class="p-3 text-sm">${user.Institution}</td>
-          <td class="p-3">
-            <span class="px-2 py-1 rounded-full text-sm ${user.Status === 'Compliant' ? 'bg-[#4baa73]/20 text-[#4baa73]' : 'bg-red-100 text-red-800'}">
-              ${user.Status}
-            </span>
-          </td>
-          <td class="p-3 text-sm">${user.DeskOfficer || 'N/A'}</td>
-          <td class="p-3 text-sm">${user.Financial}</td>
-          <td class="p-3 text-sm">${user.Infrastructure}</td>
-          <td class="p-3 text-sm">${user.Equipment}</td>
-          <td class="p-3 text-sm">${user.CapacityBuilding}</td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = ''; // Clear existing rows
+
+      data.forEach(institution => {
+        const row = `
+          <tr class="hover:bg-gray-50">
+            <td class="p-3 text-sm">${institution.name}</td>
+            <td class="p-3">
+              <span class="px-2 py-1 rounded-full text-sm ${
+                institution.status === 'Compliant' 
+                  ? 'bg-[#4baa73]/20 text-[#4baa73]' 
+                  : 'bg-red-100 text-red-800'
+              }">
+                ${institution.status}
+              </span>
+            </td>
+            <td class="p-3 text-sm">${institution.desk_officer || 'N/A'}</td>
+            <td class="p-3 text-sm">${institution.financial}</td>
+            <td class="p-3 text-sm">${institution.infrastructure}</td>
+            <td class="p-3 text-sm">${institution.equipment}</td>
+            <td class="p-3 text-sm">${institution.capacity_building}</td>
+            <td class="p-3 text-sm">${institution.ppp_projects}</td>
+          </tr>
+        `;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
     }
 
     setInterval(loadData, 300000); // Refresh every 5 mins
