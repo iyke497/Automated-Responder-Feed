@@ -60,6 +60,28 @@ class Institution(db.Model):
         self.update_status()
         self.last_synced = datetime.utcnow()
 
+    @property
+    def computed_status(self):
+        """Dynamically compute compliance based on survey counts."""
+        return 'Compliant' if any([
+            self.financial >= 1,
+            self.infrastructure >= 1,
+            self.equipment >= 1,
+            self.capacity_building >= 1,
+        ]) else 'Non-Compliant'
+
+    def to_dict(self):
+        return {
+            'name': self.display_name,
+            'status': self.computed_status,
+            'desk_officer': self.desk_officer,
+            'financial': self.financial,
+            'infrastructure': self.infrastructure,
+            'equipment': self.equipment,
+            'capacity_building': self.capacity_building,
+            'ppp_projects': self.ppp_projects
+        }
+
     def update_status(self):
         """Determine compliance status based on survey responses"""
         required_fields = [
@@ -67,6 +89,5 @@ class Institution(db.Model):
             self.infrastructure,
             self.equipment,
             self.capacity_building,
-            self.ppp_projects
         ]
-        self.status = 'Compliant' if all(x >= 1 for x in required_fields) else 'Non-Compliant'
+        self.status = 'Compliant' if any(x >= 1 for x in required_fields) else 'Non-Compliant'
