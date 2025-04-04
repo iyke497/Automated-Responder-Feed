@@ -54,7 +54,7 @@ class Institution(db.Model):
         self.financial = survey_counts.get('financial', 0)
         self.infrastructure = survey_counts.get('infrastructure', 0)
         self.equipment = survey_counts.get('equipment', 0)
-        self.capacity_building = survey_counts.get('capacity_building', 0)
+        self.capacity_building = survey_counts.get('capacity', 0)
         self.ppp_projects = survey_counts.get('ppp_projects', 0)
         
         self.update_status()
