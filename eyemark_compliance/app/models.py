@@ -30,17 +30,6 @@ class Institution(db.Model):
         cleaned = re.sub(r'[^a-zA-Z0-9\s]', '', raw_name)
         cleaned = re.sub(r'\s+', ' ', cleaned).strip().lower()
         
-        # Common replacements
-        replacements = {
-            'ctr': 'center',
-            'fed': 'federal',
-            'hosp': 'hospital',
-            'uni': 'university',
-            'tech': 'technology'
-        }
-        
-        for abbr, full in replacements.items():
-            cleaned = re.sub(rf'\b{abbr}\b', full, cleaned)
             
         return cleaned
 
