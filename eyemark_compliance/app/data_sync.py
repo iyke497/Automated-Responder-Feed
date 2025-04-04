@@ -30,18 +30,34 @@ class DataSyncer:
     def _process_surveys(self):
         """Count survey responses by normalized names"""
         surveys = {
-            'financial': self.api.fetch_survey_responses('financial-survey-id'),
-            'infrastructure': self.api.fetch_survey_responses('infra-survey-id'),
-            # Add other surveys
+            'financial': self.api.fetch_survey_responses('f0a3d43b-f7ee-4417-a338-7ba33ab9da14'),
+            'infrastructure': self.api.fetch_survey_responses('fcc992ee-ee26-4158-aa53-777a965e9d6e'),
+            'equipment': self.api.fetch_survey_responses('2bce9da9-5594-4412-8b53-bfad73806f67'),
+            'capacity': self.api.fetch_survey_responses('c567af0e-a4c7-4372-9853-23948d64cdd7'),
+            'ppp': self.api.fetch_survey_responses('4a86cfb1-3e20-41d4-8c83-d304bd102102')
         }
         
         counts = defaultdict(lambda: defaultdict(int))
         
         for survey_type, responses in surveys.items():
             for response in responses:
-                raw_name = response['organization']['name']
-                norm_name = Institution.normalize_name(raw_name)
-                counts[norm_name][survey_type] += 1
+                # Iterate through all sections
+                for section in response.get('sections', []):
+                    # Iterate through all answers in each section
+                    for answer in section.get('answers', []):
+                        # Check if verbose_body exists and is a list
+                        verbose_body = answer.get('verbose_body', [])
+                        for entry in verbose_body:
+                            # Extract name and public_id safely
+                            raw_name = entry.get('name', '')
+                            public_id = entry.get('public_id', '')
+                            
+                            # Normalize name using Institution method
+                            norm_name = Institution.normalize_name(raw_name)
+                            
+                            # Update counts
+                            if norm_name:
+                                counts[norm_name][survey_type] += 1
                 
         return counts
 
