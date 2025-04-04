@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Compliance Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+  <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    #pieChart, #barChart { min-height: 280px; }
+  </style>
+</head>
+<body class="bg-[#edf7f1] text-gray-800">
+  <div class="container mx-auto p-8">
+    <!-- Header Metrics -->
+    <div class="grid grid-cols-4 gap-4 mb-8">
+      <div class="bg-white p-4 rounded-lg shadow border border-[#4baa73]/20">
+        <h3 class="text-sm text-gray-500 mb-1">Total Institutions</h3>
+        <p class="text-2xl font-semibold text-gray-800" id="totalUsers">0</p>
+      </div>
+
+      <div class="bg-[#4baa73] p-4 rounded-lg shadow text-white">
+        <h3 class="text-sm mb-1">Compliant</h3>
+        <p class="text-2xl font-semibold" id="CompliantUsers">0</p>
+      </div>
+
+      <div class="bg-red-100 p-4 rounded-lg shadow border border-red-200">
+        <h3 class="text-sm text-gray-500 mb-1">Non-Compliant</h3>
+        <p class="text-2xl font-semibold text-gray-800" id="nonCompliantUsers">0</p>
+      </div>
+
+      <div class="bg-white p-4 rounded-lg shadow border border-[#4baa73]/20">
+        <h3 class="text-sm text-gray-500 mb-1">Compliance Rate</h3>
+        <p class="text-2xl font-semibold text-[#4baa73]" id="complianceRate">0%</p>
+      </div>
+    </div>
+
+    <!-- Charts Container -->
+    <div class="grid grid-cols-2 gap-8 mb-8">
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h2 class="text-lg font-semibold mb-4">Compliance Distribution</h2>
+        <div id="pieChart"></div>
+      </div>
+
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h2 class="text-lg font-semibold mb-4">Infrastructure Progress</h2>
+        <div id="barChart"></div>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden p-4 mt-8">
+      <h2 class="text-lg font-semibold mb-4">User Compliance Status</h2>
+      <div id="gridTable"></div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="hidden fixed inset-0 bg-gray-200/50 flex items-center justify-center z-50">
+      <div class="animate-spin rounded-full h-12 w-12 border-4 border-[#4baa73] border-t-transparent"></div>
+    </div>
+  </div>
+
+  <script>
+    let grid = null;
+    let pieChart = null;
+    let barChart = null;
+
+    async function loadData() {
+      try {
+        showLoading();
+        const response = await fetch('/api/compliance-data');
+        
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const { data, totals } = await response.json();
+        
+        updateMetrics(totals);
+        renderCharts(data);
+        renderTable(data);
+        
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        showError(error.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function updateMetrics({ total_institutions, total_compliant, total_non_compliant, compliance_rate }) {
+      document.getElementById('totalUsers').textContent = total_institutions;
+      document.getElementById('CompliantUsers').textContent = total_compliant;
+      document.getElementById('nonCompliantUsers').textContent = total_non_compliant;
+      document.getElementById('complianceRate').textContent = 
+        `${compliance_rate?.toFixed(1) || 0}%`;
+    }
+
+    function renderCharts(data) {
+      destroyCharts();
+      
+      // Pie Chart
+      const compliantCount = data.filter(i => i.status === 'Compliant').length;
+      pieChart = new ApexCharts(document.querySelector("#pieChart"), {
+        series: [compliantCount, data.length - compliantCount],
+        chart: { type: 'pie', height: 280 },
+        labels: ['Compliant', 'Non-Compliant'],
+        colors: ['#4baa73', '#ef4444'],
+        legend: { position: 'bottom' }
+      });
+      pieChart.render();
+
+      // Bar Chart
+      barChart = new ApexCharts(document.querySelector("#barChart"), {
+        series: [{
+          name: 'Infrastructure',
+          data: data.map(i => i.infrastructure)
+        }],
+        chart: { type: 'bar', height: 280 },
+        xaxis: {
+          categories: data.map(i => i.name),
+          labels: { rotate: -45, style: { colors: '#6b7280', fontSize: '12px' } }
+        },
+        colors: ['#4baa73'],
+        grid: { borderColor: '#f3f4f6' }
+      });
+      barChart.render();
+    }
+
+    function renderTable(data) {
+      const tableData = data.map(item => [
+        item.name,
+        item.status,
+        item.desk_officer || "N/A",
+        item.financial,
+        item.infrastructure,
+        item.equipment,
+        item.capacity_building,
+        item.ppp_projects,
+      ]);
+
+      if (grid) {
+        grid.updateConfig({ data: tableData }).forceRender();
+      } else {
+        grid = new gridjs.Grid({
+          columns: [
+            { name: 'Institution', width: '220px', sort: true },
+            { 
+              name: 'Status',
+              formatter: (cell) => gridjs.html(
+                `<span class="px-2 py-1 rounded-full text-xs font-medium ${
+                  cell === 'Compliant' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }">${cell}</span>`
+              )
+            },
+            { name: 'Desk Officer', width: '180px' },
+            'Financial', 'Infrastructure', 'Equipment', 
+            'Capacity Building', 'PPP'
+          ],
+          data: tableData,
+          pagination: { enabled: true, limit: 10 },
+          search: { enabled: true },
+          sort: true,
+          className: {
+            table: 'w-full text-sm',
+            th: 'bg-gray-100 px-4 py-2 text-left font-semibold',
+            td: 'px-4 py-2 border-b border-gray-100'
+          }
+        }).render(document.getElementById("gridTable"));
+      }
+    }
+
+    function destroyCharts() {
+      if (pieChart) pieChart.destroy();
+      if (barChart) barChart.destroy();
+    }
+
+    function showLoading() {
+      document.getElementById('loadingSpinner').classList.remove('hidden');
+    }
+
+    function hideLoading() {
+      document.getElementById('loadingSpinner').classList.add('hidden');
+    }
+
+    function showError(message) {
+      alert(`Error: ${message}`);
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', loadData);
+    setInterval(loadData, 300000);
+  </script>
+</body>
+</html>
