@@ -38,21 +38,21 @@
     </div>
 
     <!-- Charts Container -->
-    <div class="grid grid-cols-2 gap-8 mb-8">
-      <div class="bg-white p-4 rounded-lg shadow">
+    <div class="grid grid-cols-12 gap-8 mb-8">
+      <div class="bg-white p-4 rounded-lg shadow col-span-4">
         <h2 class="text-lg font-semibold mb-4">Compliance Distribution</h2>
         <div id="pieChart"></div>
       </div>
 
-      <div class="bg-white p-4 rounded-lg shadow">
-        <h2 class="text-lg font-semibold mb-4">Infrastructure Progress</h2>
+      <div class="bg-white p-4 rounded-lg shadow col-span-8">
+        <h2 class="text-lg font-semibold mb-4">Reporting Progress</h2>
         <div id="barChart"></div>
       </div>
     </div>
 
     <!-- Data Table -->
     <div class="bg-white rounded-lg shadow overflow-hidden p-4 mt-8">
-      <h2 class="text-lg font-semibold mb-4">User Compliance Status</h2>
+      <h2 class="text-lg font-semibold mb-4">DAPs Compliance Status</h2>
       <div id="gridTable"></div>
     </div>
 
@@ -98,6 +98,12 @@
 
     function renderCharts(data) {
       destroyCharts();
+
+      // Filter out institutions that have zero across all survey fields
+      const filteredData = data.filter(inst => {
+        const totalResponses = inst.financial + inst.infrastructure + inst.equipment + inst.capacity_building;
+        return totalResponses > 0;
+      });
       
       // Pie Chart
       const compliantCount = data.filter(i => i.status === 'Compliant').length;
@@ -109,20 +115,67 @@
         legend: { position: 'bottom' }
       });
       pieChart.render();
-
-      // Bar Chart
+      
+      // Stacked Column Chart for Survey Responses
       barChart = new ApexCharts(document.querySelector("#barChart"), {
-        series: [{
-          name: 'Infrastructure',
-          data: data.map(i => i.infrastructure)
-        }],
-        chart: { type: 'bar', height: 280 },
-        xaxis: {
-          categories: data.map(i => i.name),
-          labels: { rotate: -45, style: { colors: '#6b7280', fontSize: '12px' } }
+        series: [
+          {
+            name: 'Financial',
+            data: filteredData.map(i => i.financial)
+          },
+          {
+            name: 'Infrastructure',
+            data: filteredData.map(i => i.infrastructure)
+          },
+          {
+            name: 'Equipment',
+            data: filteredData.map(i => i.equipment)
+          },
+          {
+            name: 'Capacity Building',
+            data: filteredData.map(i => i.capacity_building)
+          }
+        ],
+        chart: {
+          type: 'bar',
+          height: 280,
+          stacked: true,
+          toolbar: { show: true },
+          zoom: { enabled: true }
         },
-        colors: ['#4baa73'],
-        grid: { borderColor: '#f3f4f6' }
+        plotOptions: {
+          bar: {
+            horizontal: false,
+            columnWidth: '75%', // Adjust column width as needed
+          },
+        },
+        dataLabels: { enabled: false },
+        stroke: {
+          show: true,
+          width: 1,
+          colors: ['#fff']
+        },
+        xaxis: {
+          categories: filteredData.map(i => i.name),
+          labels: {show: false, rotate: -45, style: { colors: '#6b7280', fontSize: '8px' } }
+        },
+        yaxis: {
+          title: {
+            text: 'Number of Responses'
+          }
+        },
+        legend: {
+          position: 'right',
+          offsetY: 0,
+        },
+        grid: { borderColor: '#f3f4f6' },
+        tooltip: {
+          y: {
+            formatter: function(val) {
+              return val;
+            }
+          }
+        }
       });
       barChart.render();
     }
@@ -144,27 +197,32 @@
       } else {
         grid = new gridjs.Grid({
           columns: [
-            { name: 'Institution', width: '220px', sort: true },
+            { name: 'Institution', width: '250px', sort: true },
             { 
               name: 'Status',
+              width: '100px',
               formatter: (cell) => gridjs.html(
                 `<span class="px-2 py-1 rounded-full text-xs font-medium ${
                   cell === 'Compliant' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                 }">${cell}</span>`
               )
             },
-            { name: 'Desk Officer', width: '180px' },
-            'Financial', 'Infrastructure', 'Equipment', 
-            'Capacity Building', 'PPP'
+            { name: 'Desk Officer', width: '80px' },
+            { name: 'Financial', width: '60px' },
+            { name: 'Infrastructure', width: '60px' },
+            { name: 'Equipment', width: '60px' },
+            { name: 'Capacity Building', width: '80px' },
+            { name: 'PPP', width: '50px' }
           ],
           data: tableData,
-          pagination: { enabled: true, limit: 10 },
+          pagination: { enabled: true, limit: 20 },
           search: { enabled: true },
           sort: true,
+          resizable: true,
           className: {
-            table: 'w-full text-sm',
-            th: 'bg-gray-100 px-4 py-2 text-left font-semibold',
-            td: 'px-4 py-2 border-b border-gray-100'
+            table: 'table-fixed w-full text-sm',
+            th: 'bg-gray-100 px-4 py-2 text-left font-semibold whitespace-normal break-words h-16',
+            td: 'px-4 py-2 border-b border-gray-100 whitespace-normal break-words'
           }
         }).render(document.getElementById("gridTable"));
       }
