@@ -1,7 +1,7 @@
 # <--v1.03.04-->
 import requests
 import logging
-from app.config import Config
+from .config import Config
 
 class EyemarkAPIClient:
     def __init__(self):
