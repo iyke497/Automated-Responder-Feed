@@ -19,7 +19,7 @@ SURVEY_MAP = {
 
 @main.route('/')
 def dashboard():
-    return render_template('dash2_gridjs_cleaned.html')
+    return render_template('dashboard.html')
 
 @main.route('/api/compliance-data')
 def compliance_data():
