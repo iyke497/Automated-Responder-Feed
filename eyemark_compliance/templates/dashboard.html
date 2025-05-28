@@ -11,6 +11,49 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     body { font-family: 'Inter', sans-serif; }
     #pieChart, #barChart { min-height: 280px; }
+    
+    /* Tooltip styles */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 200px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 8px;
+      position: absolute;
+      z-index: 1000;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 12px;
+      font-weight: normal;
+      white-space: normal;
+      line-height: 1.4;
+    }
+    
+    .tooltip .tooltiptext::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #333 transparent transparent transparent;
+    }
+    
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
   </style>
 </head>
 <body class="bg-[#edf7f1] text-gray-800">
@@ -197,10 +240,15 @@
 
       if (grid) {
         grid.updateConfig({ data: tableData }).forceRender();
+        addTooltips();
       } else {
         grid = new gridjs.Grid({
           columns: [
-            { name: 'Institution', width: '250px', sort: true },
+            { 
+              name: 'Institution', 
+              width: '250px', 
+              sort: true 
+            },
             { 
               name: 'Status',
               width: '100px',
@@ -210,12 +258,30 @@
                 }">${cell}</span>`
               )
             },
-            { name: 'Desk Officer', width: '80px' },
-            { name: 'Financial', width: '60px' },
-            { name: 'Infrastructure', width: '60px' },
-            { name: 'Equipment', width: '60px' },
-            { name: 'Capacity Building', width: '80px' },
-            { name: 'PPP', width: '50px' }
+            { 
+              name: 'Desk Officer', 
+              width: '80px' 
+            },
+            { 
+              name: 'Financial', 
+              width: '60px' 
+            },
+            { 
+              name: 'Infrastructure', 
+              width: '60px' 
+            },
+            { 
+              name: 'Equipment', 
+              width: '60px' 
+            },
+            { 
+              name: 'Capacity Building', 
+              width: '80px' 
+            },
+            { 
+              name: 'PPP', 
+              width: '50px' 
+            }
           ],
           data: tableData,
           pagination: { enabled: true, limit: 20 },
@@ -228,7 +294,33 @@
             td: 'px-4 py-2 border-b border-gray-100 whitespace-normal break-words'
           }
         }).render(document.getElementById("gridTable"));
+        
+        addTooltips();
       }
+    }
+
+    function addTooltips() {
+      // Wait for Grid.js to render
+      setTimeout(() => {
+        const tooltipData = [
+          { text: 'Institution', tooltip: 'Name of the healthcare institution or regulatory body' },
+          { text: 'Status', tooltip: 'Compliance status based on survey responses' },
+          { text: 'Desk Officer', tooltip: 'Assigned desk officer responsible for this institution' },
+          { text: 'Financial', tooltip: 'Number of financial survey responses submitted' },
+          { text: 'Infrastructure', tooltip: 'Number of infrastructure survey responses submitted' },
+          { text: 'Equipment', tooltip: 'Number of equipment survey responses submitted' },
+          { text: 'Capacity Building', tooltip: 'Number of capacity building survey responses submitted' },
+          { text: 'PPP', tooltip: 'Number of Public-Private Partnership projects' }
+        ];
+
+        const headers = document.querySelectorAll('#gridTable th');
+        headers.forEach((header, index) => {
+          if (tooltipData[index]) {
+            header.setAttribute('title', tooltipData[index].tooltip);
+            header.style.cursor = 'help';
+          }
+        });
+      }, 100);
     }
 
     function destroyCharts() {
@@ -250,7 +342,7 @@
 
     // Initialize
     document.addEventListener('DOMContentLoaded', loadData);
-    setInterval(loadData, 300000);
+    setInterval(loadData, 3000000);
   </script>
 </body>
 </html>

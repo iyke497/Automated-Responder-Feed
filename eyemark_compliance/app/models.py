@@ -61,7 +61,7 @@ class Institution(db.Model):
 
     def to_dict(self):
         return {
-            'name': self.display_name,
+            'name': self.display_name.title(),
             'status': self.computed_status,
             'desk_officer': self.desk_officer,
             'financial': self.financial,
