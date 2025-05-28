@@ -4,3 +4,5 @@ eyemark_compliance/.DS_Store
 __pycache__
 /temp_files
 eyemark_compliance/.env
+eyemark_compliance/app/data_processor.py
+.gitignore
