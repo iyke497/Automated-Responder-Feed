@@ -3,7 +3,6 @@ from flask import Blueprint, render_template, jsonify, request
 from .models import Institution  # Add this
 from .extensions import db  # Add this
 from .api_client import EyemarkAPIClient
-from .data_processor import DataProcessor
 from concurrent.futures import ThreadPoolExecutor
 import logging
 
