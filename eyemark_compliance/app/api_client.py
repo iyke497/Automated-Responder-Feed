@@ -13,7 +13,7 @@ class EyemarkAPIClient:
         self.logger = logging.getLogger(__name__)
 
     def fetch_compliance_data(self):
-        """Fetch all paginated compliance data"""
+        """Fetch all Agencies for a ministry"""
         try:
             url = f"{self.base_url}/users/visitor-organizations/"
             all_results = []
