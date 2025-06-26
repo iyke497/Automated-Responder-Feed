@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compliance Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    #pieChart, #barChart { min-height: 280px; }
+    
+    /* Table styling */
+    .sortable-header {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      padding-right: 20px !important;
+    }
+    
+    .sortable-header:hover {
+      background-color: #2d3748 !important;
+    }
+    
+    .sort-arrow {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.5;
+    }
+    
+    .sort-arrow.active {
+      opacity: 1;
+    }
+    
+    /* Pagination styling */
+    .pagination-container {
+      display: flex;
+      justify-content: between;
+      align-items: center;
+      margin-top: 1rem;
+      gap: 1rem;
+    }
+    
+    .pagination-info {
+      color: #6b7280;
+      font-size: 0.875rem;
+    }
+    
+    .pagination-controls {
+      display: flex;
+      gap: 0.25rem;
+    }
+    
+    .pagination-btn {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #e5e7eb;
+      background: white;
+      color: #374151;
+      cursor: pointer;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+    }
+    
+    .pagination-btn:hover:not(:disabled) {
+      background-color: #f9fafb;
+    }
+    
+    .pagination-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .pagination-btn.active {
+      background-color: #4baa73;
+      color: white;
+      border-color: #4baa73;
+    }
+  </style>
+</head>
+<body class="bg-[#edf7f1] text-gray-800">
+  <div class="container mx-auto p-8">
+    <!-- Header Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white p-4 rounded-lg shadow border border-[#4baa73]/20">
+        <h3 class="text-sm text-gray-500 mb-1">Total Institutions</h3>
+        <p class="text-2xl font-semibold text-gray-800" id="totalUsers">116</p>
+      </div>
+
+      <div class="bg-[#4baa73] p-4 rounded-lg shadow text-white">
+        <h3 class="text-sm mb-1">Compliant</h3>
+        <p class="text-2xl font-semibold" id="CompliantUsers">34</p>
+      </div>
+
+      <div class="bg-red-100 p-4 rounded-lg shadow border border-red-200">
+        <h3 class="text-sm text-gray-500 mb-1">Non-Compliant</h3>
+        <p class="text-2xl font-semibold text-gray-800" id="nonCompliantUsers">82</p>
+      </div>
+
+      <div class="bg-white p-4 rounded-lg shadow border border-[#4baa73]/20">
+        <h3 class="text-sm text-gray-500 mb-1">Compliance Rate</h3>
+        <p class="text-2xl font-semibold text-[#4baa73]" id="complianceRate">29.3%</p>
+      </div>
+    </div>
+
+    <!-- Charts Container -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+      <div class="bg-white p-4 rounded-lg shadow lg:col-span-4">
+        <h2 class="text-lg font-semibold mb-4">Compliance Distribution</h2>
+        <div id="pieChart"></div>
+      </div>
+
+      <div class="bg-white p-4 rounded-lg shadow lg:col-span-8">
+        <h2 class="text-lg font-semibold mb-4">Reporting Progress</h2>
+        <div id="barChart"></div>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden p-4 mt-8">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold">DAPs Compliance Status</h2>
+        <div class="flex items-center gap-4">
+          <div class="relative">
+            <input 
+              type="text" 
+              id="searchInput" 
+              placeholder="Search institutions..." 
+              class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4baa73] focus:border-transparent"
+            >
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="text-white bg-gray-700">
+            <tr>
+              <th class="px-4 py-3 sortable-header" data-column="0" title="Name of the healthcare institution or regulatory body">
+                Institution
+                <span class="sort-arrow">↕</span>
+              </th>
+              <th class="px-4 py-3 sortable-header text-center" data-column="1" title="Compliance status based on survey responses">
+                Status
+                <span class="sort-arrow">↕</span>
+              </th>
+              <th class="px-4 py-3 sortable-header text-center" data-column="2" title="Assigned desk officer responsible for this institution">
+                Desk Officer
+                <span class="sort-arrow">↕</span>
+              </th>
+              <th class="px-4 py-3 sortable-header text-center" data-column="3" title="Number of financial survey responses submitted">
+                Financial
+                <span class="sort-arrow">↕</span>
+              </th>
+              <th class="px-4 py-3 sortable-header text-center" data-column="4" title="Number of infrastructure survey responses submitted">
+                Infrastructure
+                <span class="sort-arrow">↕</span>
+              </th>
+              <th class="px-4 py-3 sortable-header text-center" data-column="5" title="Number of equipment survey responses submitted">
+                Equipment
+                <span class="sort-arrow">↕</span>
+              </th>
+              <th class="px-4 py-3 sortable-header text-center" data-column="6" title="Number of capacity building survey responses submitted">
+                Capacity Building
+                <span class="sort-arrow">↕</span>
+              </th>
+              <th class="px-4 py-3 sortable-header text-center" data-column="7" title="Number of Public-Private Partnership projects">
+                PPP Projects
+                <span class="sort-arrow">↕</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
+            <!-- Table rows will be inserted here -->
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Pagination -->
+      <div class="pagination-container">
+        <div class="pagination-info" id="paginationInfo">
+          Showing 1-10 of 0 results
+        </div>
+        <div class="pagination-controls" id="paginationControls">
+          <!-- Pagination buttons will be inserted here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let pieChart = null;
+    let barChart = null;
+    let currentData = [];
+    let filteredData = [];
+    let currentPage = 1;
+    let itemsPerPage = 10;
+    let sortColumn = -1;
+    let sortDirection = 'asc';
+
+    async function loadData() {
+      try {
+        showLoading();
+        const response = await fetch('/api/compliance-data');
+        
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const { data, totals } = await response.json();
+        
+        currentData = data;
+        filteredData = [...data];
+        
+        updateMetrics(totals);
+        renderCharts(data);
+        renderTable();
+        
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        showError(error.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function showLoading() {
+      // Add loading spinner or indicator
+      console.log('Loading...');
+    }
+
+    function hideLoading() {
+      // Hide loading spinner
+      console.log('Loading complete');
+    }
+
+    function showError(message) {
+      alert(`Error: ${message}`);
+    }
+
+    function updateMetrics(totals) {
+      document.getElementById('totalUsers').textContent = totals.total_institutions;
+      document.getElementById('CompliantUsers').textContent = totals.total_compliant;
+      document.getElementById('nonCompliantUsers').textContent = totals.total_non_compliant;
+      document.getElementById('complianceRate').textContent = `${totals.compliance_rate?.toFixed(1) || 0}%`;
+    }
+
+    function renderCharts(data) {
+      destroyCharts();
+
+      // Filter out institutions that have zero across all survey fields
+      const filteredData = data.filter(inst => {
+        const totalResponses = inst.financial + inst.infrastructure + inst.equipment + inst.capacity_building;
+        return totalResponses > 0;
+      });
+      
+      // Pie Chart
+      const compliantCount = data.filter(i => i.status === 'Compliant').length;
+      pieChart = new ApexCharts(document.querySelector("#pieChart"), {
+        series: [compliantCount, data.length - compliantCount],
+        chart: { type: 'pie', height: 280 },
+        labels: ['Compliant', 'Non-Compliant'],
+        colors: ['#4baa73', '#ef4444'],
+        legend: { position: 'bottom' }
+      });
+      pieChart.render();
+      
+      // Stacked Column Chart for Survey Responses
+      barChart = new ApexCharts(document.querySelector("#barChart"), {
+        series: [
+          {
+            name: 'Financial',
+            data: filteredData.map(i => i.financial)
+          },
+          {
+            name: 'Infrastructure',
+            data: filteredData.map(i => i.infrastructure)
+          },
+          {
+            name: 'Equipment',
+            data: filteredData.map(i => i.equipment)
+          },
+          {
+            name: 'Capacity Building',
+            data: filteredData.map(i => i.capacity_building)
+          }
+        ],
+        chart: {
+          type: 'bar',
+          height: 280,
+          stacked: true,
+          toolbar: { show: true },
+          zoom: { enabled: true }
+        },
+        plotOptions: {
+          bar: {
+            horizontal: false,
+            columnWidth: '75%',
+          },
+        },
+        dataLabels: { enabled: false },
+        stroke: {
+          show: true,
+          width: 1,
+          colors: ['#fff']
+        },
+        xaxis: {
+          categories: filteredData.map(i => i.name),
+          labels: {show: false, rotate: -45, style: { colors: '#6b7280', fontSize: '8px' } }
+        },
+        yaxis: {
+          title: {
+            text: 'Number of Responses'
+          }
+        },
+        legend: {
+          position: 'right',
+          offsetY: 0,
+        },
+        grid: { borderColor: '#f3f4f6' },
+        tooltip: {
+          y: {
+            formatter: function(val) {
+              return val;
+            }
+          }
+        }
+      });
+      barChart.render();
+    }
+
+    function renderTable() {
+      const tableBody = document.getElementById('tableBody');
+      const start = (currentPage - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+      const pageData = filteredData.slice(start, end);
+
+      tableBody.innerHTML = pageData.map(item => `
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 font-medium text-gray-900">${item.name}</td>
+          <td class="px-4 py-3 text-center">
+            <span class="px-3 py-1 rounded-full text-xs font-semibold ${
+              item.status === 'Compliant' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            }">${item.status}</span>
+          </td>
+          <td class="px-4 py-3 text-center text-gray-700">${item.desk_officer || 'N/A'}</td>
+          <td class="px-4 py-3 text-center text-gray-700">${item.financial}</td>
+          <td class="px-4 py-3 text-center text-gray-700">${item.infrastructure}</td>
+          <td class="px-4 py-3 text-center text-gray-700">${item.equipment}</td>
+          <td class="px-4 py-3 text-center text-gray-700">${item.capacity_building}</td>
+          <td class="px-4 py-3 text-center text-gray-700">${item.ppp_projects}</td>
+        </tr>
+      `).join('');
+
+      updatePagination();
+    }
+
+    function updatePagination() {
+      const totalItems = filteredData.length;
+      const totalPages = Math.ceil(totalItems / itemsPerPage);
+      const start = (currentPage - 1) * itemsPerPage + 1;
+      const end = Math.min(currentPage * itemsPerPage, totalItems);
+
+      // Update info
+      document.getElementById('paginationInfo').textContent = 
+        `Showing ${start}-${end} of ${totalItems} results`;
+
+      // Update controls
+      const controls = document.getElementById('paginationControls');
+      let buttonsHTML = '';
+
+      // Previous button
+      buttonsHTML += `<button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="changePage(${currentPage - 1})">Previous</button>`;
+
+      // Page numbers
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+          buttonsHTML += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+          buttonsHTML += `<span class="pagination-btn" style="border: none; background: none;">...</span>`;
+        }
+      }
+
+      // Next button
+      buttonsHTML += `<button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="changePage(${currentPage + 1})">Next</button>`;
+
+      controls.innerHTML = buttonsHTML;
+    }
+
+    function changePage(page) {
+      const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+      if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        renderTable();
+      }
+    }
+
+    function sortTable(columnIndex) {
+      const columns = ['name', 'status', 'desk_officer', 'financial', 'infrastructure', 'equipment', 'capacity_building', 'ppp_projects'];
+      const column = columns[columnIndex];
+
+      if (sortColumn === columnIndex) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortColumn = columnIndex;
+        sortDirection = 'asc';
+      }
+
+      filteredData.sort((a, b) => {
+        let aVal = a[column];
+        let bVal = b[column];
+
+        // Handle numeric columns
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+
+        // Handle string columns
+        aVal = (aVal || '').toString().toLowerCase();
+        bVal = (bVal || '').toString().toLowerCase();
+
+        if (sortDirection === 'asc') {
+          return aVal.localeCompare(bVal);
+        } else {
+          return bVal.localeCompare(aVal);
+        }
+      });
+
+      // Update sort arrows
+      document.querySelectorAll('.sort-arrow').forEach(arrow => {
+        arrow.textContent = '↕';
+        arrow.classList.remove('active');
+      });
+
+      const activeArrow = document.querySelector(`[data-column="${columnIndex}"] .sort-arrow`);
+      if (activeArrow) {
+        activeArrow.textContent = sortDirection === 'asc' ? '↑' : '↓';
+        activeArrow.classList.add('active');
+      }
+
+      currentPage = 1;
+      renderTable();
+    }
+
+    function filterTable() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      filteredData = currentData.filter(item => 
+        item.name.toLowerCase().includes(searchTerm) ||
+        item.status.toLowerCase().includes(searchTerm) ||
+        (item.desk_officer && item.desk_officer.toLowerCase().includes(searchTerm))
+      );
+      currentPage = 1;
+      renderTable();
+    }
+
+    function destroyCharts() {
+      if (pieChart) pieChart.destroy();
+      if (barChart) barChart.destroy();
+    }
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      loadData();
+
+      // Add event listeners
+      document.getElementById('searchInput').addEventListener('input', filterTable);
+      
+      document.querySelectorAll('.sortable-header').forEach(header => {
+        header.addEventListener('click', () => {
+          const columnIndex = parseInt(header.getAttribute('data-column'));
+          sortTable(columnIndex);
+        });
+      });
+    });
+
+    // Auto-refresh every 5 minutes
+    setInterval(loadData, 300000);
+  </script>
+</body>
+</html>

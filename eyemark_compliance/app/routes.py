@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 @main.route('/')
 def dashboard():
-    return render_template('dashboard.html')
+    return render_template('dashboard_bs.html')
 
 @main.route('/api/compliance-data')
 def compliance_data():
